@@ -1,0 +1,14 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="PhantomData.fs" />
+    <Compile Include="Into.fs" />
+    <Compile Include="Pointers.fs" />
+    <Compile Include="StructPool.fs" />
+  </ItemGroup>
+
+</Project>
