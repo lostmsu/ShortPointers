@@ -27,6 +27,14 @@ let makePool<'P, 'T when 'T: struct and 'P:> IInto<int>> pointerFactory size =
     pointerFactory = pointerFactory;
     phantom = phantom<'P> }
 
+let makePoolGeneric<'P, 'T
+                     when 'P:> System.IConvertible
+                      and 'P: struct
+                      and 'T: struct> size =
+  makePool<Ptr<'P>,'T>
+    Ptr<'P>.op_Explicit
+    size
+
 let inline makePoolAuto< ^P, 'T 
                         when ^P : (static member op_Explicit: int -> ^P)
                          and 'P :> IInto<int>
