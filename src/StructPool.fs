@@ -18,6 +18,10 @@ type StructPool<'P, 'T when 'T: struct and 'P:> IInto<int>> =
       allocated: System.Collections.BitArray;
       phantom: PhantomData<'P>; }
   
+  member this.Reset() =
+    this.data.Initialize()
+    this.allocated.SetAll(false)
+
   interface IPool<'P, 'T> with
     member this.GetReference(pointer) = &this.data.[into <| getAddress pointer]
 

@@ -21,3 +21,10 @@ module Pointers =
 
       interface ITypedPointer<'P, 'T> with
           member this.Address = this.Address
+  
+  let inline inlineNull< ^P, 'T 
+      when 'T: struct
+       and ^P: (static member Zero: ^P) > =
+    TypedPointer< ^P,'T>(LanguagePrimitives.GenericZero)
+
+  let inline isNull pointer = getAddress pointer = LanguagePrimitives.GenericZero
