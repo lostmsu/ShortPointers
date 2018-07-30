@@ -47,44 +47,70 @@ let inline makePoolAuto< ^P, 'T
     (fun a -> (^P : (static member op_Explicit: int -> ^P) (a)))
     size
 
-let New pool value =
-    let mutable result = None
-    for start = 0 to pool.allocated.Length - 1 do
-        if Option.isNone result then ()
-        elif not pool.allocated.[start]
-        then
-            pool.allocated.[start] <- true
-            pool.data.[start] <- value
-            let ptr = pool.pointerFactory start
-            result <- Some(TypedPointer<'P, 'T >(ptr))
-    result
+let New pool (value:'T) =
+    Seq.cast pool.allocated
+    |> Seq.tryFindIndex (not << id)
+    |> Option.map (fun address ->
+      pool.allocated.[address] <- true
+      pool.data.[address] <- value
+      let ptr = pool.pointerFactory address
+      TypedPointer<'P,'T>(ptr)
+    )
 
+let NewArray pool values =
+  if Array.length values = 0 then raise(System.ArgumentException())
+  let tryFindEmptyRange() =
+    let mutable count = 0
+    Seq.cast pool.allocated
+    |> Seq.tryFindIndex (fun allocated ->
+      count <- if allocated then count + 1 else 0
+      count = values.Length)
+    |> Option.map (fun i -> i - values.Length)
+
+  match tryFindEmptyRange() with
+  | None -> None
+  | Some(address) ->
+  for i = 0 to values.Length - 1 do
+    pool.allocated.[address + i] <- true
+    pool.data.[address + i] <- values.[i]
+  let ptr = pool.pointerFactory address
+  Some(TypedPointer<'P,'T>(ptr))
+
+let private collectGarbage
+          (pool: StructPool<'P, 'T >)
+          (roots: seq<ITypedPointer<'P, 'T>>) =
+  let alive = Bits(pool.data.Length)
+  let visited = Bits(pool.data.Length)
+  let visitQueue = Queue<ITypedPointer<'P, 'T>>()
+  for root in roots do
+    visitQueue.Enqueue(root)
+    alive.[into <| getAddress root] <- true
+  let wasVisited address = into address < pool.data.Length
+                            && visited.[into address]
+  while visitQueue.Count > 0 do
+    let aliveObject = visitQueue.Dequeue()
+    if not(wasVisited <| getAddress aliveObject) then
+      let obj: byref<'T> = &Ref pool aliveObject
+      for reference in getReferences obj do
+        visitQueue.Enqueue(reference)
+  for i = 0 to pool.allocated.Length - 1 do
+    pool.allocated.[i] <- alive.[i]
+  
 let GcNew (pool: StructPool<'P, 'T >)
           (roots: seq<ITypedPointer<'P, 'T>>)
           (value: 'T) =
-  let collectGarbage() =
-    let alive = Bits(pool.data.Length)
-    let visited = Bits(pool.data.Length)
-    let visitQueue = Queue<ITypedPointer<'P, 'T>>()
-    for root in roots do
-      visitQueue.Enqueue(root)
-      alive.[into <| getAddress root] <- true
-    let wasVisited address = into address < pool.data.Length
-                             && visited.[into address]
-    while visitQueue.Count > 0 do
-      let aliveObject = visitQueue.Dequeue()
-      if not(wasVisited <| getAddress aliveObject) then
-        let obj: byref<'T> = &Ref pool aliveObject
-        for reference in getReferences obj do
-          visitQueue.Enqueue(reference)
-    for i = 0 to pool.allocated.Length - 1 do
-      pool.allocated.[i] <- alive.[i]
-
   match New pool value with
   | Some p -> Some(p)
   | None ->
-    collectGarbage()
+    collectGarbage pool roots
     New pool value
+
+let GcNewArray pool roots values =
+  match NewArray pool values with
+  | Some p -> Some p
+  | None ->
+  collectGarbage pool roots
+  NewArray pool values
 
 let Release (pool: StructPool<'P,'T>) (pointer: TypedPointer<'P, 'T>) =
     let index = into <| getAddress pointer
