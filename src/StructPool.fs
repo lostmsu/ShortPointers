@@ -21,6 +21,8 @@ type StructPool<'P, 'T when 'T: struct and 'P:> IInto<int>> =
   member this.Reset() =
     this.data.Initialize()
     this.allocated.SetAll(false)
+  
+  member this.Size = this.data.Length
 
   interface IPool<'P, 'T> with
     member this.GetReference(pointer) = &this.data.[into <| getAddress pointer]
