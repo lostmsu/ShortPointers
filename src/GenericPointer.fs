@@ -27,6 +27,9 @@ type Ptr<'T when 'T : struct and 'T :> System.IConvertible> =
   
   interface IInto<int> with
     member this.Into = Ptr<'T>.op_Explicit this
+
+  interface IPointer<'T> with
+    member this.Address = this.Untyped
   
   interface System.IConvertible with
     member this.ToBoolean(provider) = this.Untyped.ToBoolean(provider)
