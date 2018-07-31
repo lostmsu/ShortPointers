@@ -95,22 +95,35 @@ let private collectGarbage
         visitQueue.Enqueue(reference)
   for i = 0 to pool.allocated.Length - 1 do
     pool.allocated.[i] <- alive.[i]
-  
+
+let private collectGarbageUnmanaged<'P, 'T
+                    when 'T : unmanaged
+                     and 'T : struct
+                     and 'P :> IInto<int>>
+              (pool: StructPool<'P, 'T>)
+              (roots: seq<ITypedPointer<'P,'T>>) =
+  pool.allocated.SetAll(false)
+  for ptr in roots do
+    pool.allocated.[into <| getAddress ptr] <- true
+
 let GcNew (pool: StructPool<'P, 'T >)
-          (roots: seq<ITypedPointer<'P, 'T>>)
+          gc
           (value: 'T) =
   match New pool value with
   | Some p -> Some(p)
   | None ->
-    collectGarbage pool roots
+    gc pool
     New pool value
 
-let GcNewArray pool roots values =
+let GcNewArray pool gc values =
   match NewArray pool values with
   | Some p -> Some p
   | None ->
-  collectGarbage pool roots
+  gc pool
   NewArray pool values
+
+let managedGC roots pool = collectGarbage pool roots
+let unmanagedGC roots pool = collectGarbageUnmanaged pool roots
 
 let Release (pool: StructPool<'P,'T>) (pointer: TypedPointer<'P, 'T>) =
     let index = into <| getAddress pointer

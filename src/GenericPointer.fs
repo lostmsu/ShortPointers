@@ -18,6 +18,7 @@ type Ptr<'T when 'T : struct and 'T :> System.IConvertible> =
 
   static member op_Explicit (value: int) = Pointer(PtrFromInt.ToPtr.Invoke(value))
   static member op_Explicit (value: Ptr<'T>) = value.Untyped.ToInt32(null)
+  static member op_Explicit (value: 'T) = Pointer(value)
   
   static member Zero = Ptr<'T>.op_Explicit 0
 
