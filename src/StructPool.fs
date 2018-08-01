@@ -59,7 +59,7 @@ let New pool (value:'T) =
       TypedPointer<'P,'T>(ptr)
     )
 
-let NewArray pool values =
+let NewArray<'P,'T when 'T: struct and 'P:> IInto<int>> (pool: StructPool<'P, 'T>) values =
   if Array.length values = 0 then raise(System.ArgumentException())
   let tryFindEmptyRange() =
     let mutable count = 0
